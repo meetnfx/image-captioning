@@ -1,22 +1,33 @@
-# envs
+# Catches venv, conda local envs, and hidden env folders
 venv/
 env/
 .env
+.venv/
+conda-meta/
+.condarc
 
-# dataset and weight
+# Ignores all contents of data/ and checkpoints/ 
+# but keeps the folders themselves thru gitkeep
 data/*
 !data/.gitkeep
 checkpoints/*
 !checkpoints/.gitkeep
+
+# Ignore any random model weights that end up
 *.pth
 *.pt
+*.ckpt
+*.h5
 
-# cache
+# python notebook cache
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 .ipynb_checkpoints/
+.pytest_cache/
 
-# OS stuff
+# miscs stuff
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
