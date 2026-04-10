@@ -1,0 +1,22 @@
+# envs
+venv/
+env/
+.env
+
+# dataset and weight
+data/*
+!data/.gitkeep
+checkpoints/*
+!checkpoints/.gitkeep
+*.pth
+*.pt
+
+# cache
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# OS stuff
+.DS_Store
+Thumbs.db
