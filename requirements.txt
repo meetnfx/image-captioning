@@ -4,10 +4,6 @@ matplotlib
 numpy>=2.0.0
 tqdm
 
-# for running non local GPU torch (colab and stuff)
-torch<=2.6.0
-torchvision
-
 #Vision and Image
 Pillow
 
@@ -17,3 +13,5 @@ pycocoevalcap
 
 # Utilities
 pyyaml
+
+# did not include torch version since we use diff gpu/cpu (cloud vs local)
