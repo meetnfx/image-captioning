@@ -1,5 +1,5 @@
 """
-To work with the jumbo i did prob should have something that follows this
+In addition to whatever you work on for the models, To work with the jumbo i did prob should have the forward have something that follows this and a sample func
 
 1 forward(self, features, captions)
    Used by train.py for training.
