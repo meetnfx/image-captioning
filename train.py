@@ -8,6 +8,7 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import get_loader
 from models.encoder import EncoderCNN
+from utils.transforms import get_transforms
 # ADD DECODER IMPORTS HERE TO ACTUALLY RUN THIS
 # from models.baseline_lstm import DecoderRNN
 # from models.attention_lstm import AttentionDecoder
@@ -27,25 +28,19 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed EXA
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # device 
     print(f"Training {args.model.upper()} model on {device}")
-    transform = transforms.Compose([  # data load, standard forresnet50
-        transforms.Resize((256, 256)),
-        transforms.CenterCrop((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
     data_dir = os.path.join(os.getcwd(), 'data')
     train_loader, dataset = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='train',
-        transform=transform,
+        transform=get_transforms('train'),
         batch_size=args.batch_size
     )
     val_loader, _ = get_loader(  # validation loader
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='val',
-        transform=transform,
+        transform=get_transforms('val'),
         batch_size=args.batch_size,
         shuffle=False # Don't need to shuffle validation data
     )
