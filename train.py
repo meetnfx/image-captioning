@@ -5,7 +5,7 @@ import argparse
 import os
 import torchvision.transforms as transforms
 from tqdm import tqdm
-
+from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import get_loader
 from models.encoder import EncoderCNN
 # ADD DECODER IMPORTS HERE TO ACTUALLY RUN THIS
@@ -39,6 +39,14 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed
         transform=transform,
         batch_size=args.batch_size
     )
+    val_loader, _ = get_loader(  # validation loader
+        root_dir=os.path.join(data_dir, 'images'),
+        ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
+        split='val',
+        transform=transform,
+        batch_size=args.batch_size,
+        shuffle=False # Don't need to shuffle validation data
+    )
     vocab_size = len(dataset.vocab)
     pad_idx = dataset.vocab.stoi["<PAD>"]
     encoder = EncoderCNN(args.embed_size).to(device) # init models
@@ -53,25 +61,61 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx) # loss shuold ignore <PAD> tokens
     
     # only optimize the decoder parameters and maybe part of lin layer of encoder
-    # params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
-    # optimizer = optim.Adam(params, lr = args.lr)
+    # this is commented, can uncomment once models are completed and rdy for testing/comparing
+    """
+    params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
+    optimizer = optim.Adam(params, lr=args.lr)
+    writer = SummaryWriter(f"runs/{args.model}_experiment") # create tensor board writer
+    os.makedirs("checkpoints", exist_ok=True)
+    best_val_loss = float('inf') 
+    for epoch in range(args.epochs):
+        print(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
+        encoder.train() #training
+        decoder.train()
+        train_loss = 0
+        for idx, (imgs, captions) in tqdm(enumerate(train_loader), total=len(train_loader), desc="Training"):
+            imgs, captions = imgs.to(device), captions.to(device)
+            features = encoder(imgs)
+            outputs = decoder(features, captions)
+            loss = criterion(outputs.view(-1, vocab_size), captions.view(-1))
+            train_loss += loss.item()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        avg_train_loss = train_loss / len(train_loader)
+        print(f"Training Loss: {avg_train_loss:.4f}")
 
-    # IMPORTANT TRAINING LOOP, MIGHT NEED TO EDIT once all decoders are ready (uncomment)    
-    # for epoch in range(args.epochs):
-    #     print(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
-    #     for idx, (imgs, captions) in tqdm(enumerate(train_loader), total = len(train_loader)):
-    #         imgs = imgs.to(device)
-    #         captions = captions.to(device)
-    #         features = encoder(imgs) # forward pass
-    #         outputs = decoder(features, captions)
-    #         # outputs shape: [batch_size, seq_length,vocab_size]  # find loss
-    #         # captions shape: [batch_size,seq_length]
-    #         loss = criterion(outputs.view(-1, vocab_size), captions.view(-1))
+        encoder.eval() # validation part
+        decoder.eval()
+        val_loss = 0
+        with torch.no_grad(): # CRITICAL: Don't calculate gradients during validation!
+            for idx, (imgs, captions) in tqdm(enumerate(val_loader), total=len(val_loader), desc="Validating"):
+                imgs, captions = imgs.to(device), captions.to(device)
+                features = encoder(imgs)
+                outputs = decoder(features, captions)
+                loss = criterion(outputs.view(-1, vocab_size), captions.view(-1))
+                val_loss += loss.item()
+        avg_val_loss = val_loss / len(val_loader)
+        print(f"Validation Loss: {avg_val_loss:.4f}")
 
-    #         optimizer.zero_grad() # Backward and optimize
-    #         loss.backward()
-    #         optimizer.step()
-    #     print(f"Loss for Epoch {epoch+1}: {loss.item():.4f}")
+        writer.add_scalar('Loss/Train', avg_train_loss, epoch) # write to tensor board
+        writer.add_scalar('Loss/Validation', avg_val_loss, epoch)
 
+        checkpoint = { # checkpoints with val loss
+            'epoch': epoch + 1,
+            'encoder_state_dict': encoder.state_dict(),
+            'decoder_state_dict': decoder.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss': avg_train_loss,
+            'val_loss': avg_val_loss,
+            'vocab_size': vocab_size
+        }
+        torch.save(checkpoint, os.path.join("checkpoints", f"{args.model}_latest.pth"))
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            torch.save(checkpoint, os.path.join("checkpoints", f"{args.model}_best.pth"))
+            print(f"new best validation loss Saved checkpoint.")
+    writer.close()
+    """
 if __name__ == "__main__":
     train()
