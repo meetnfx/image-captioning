@@ -5,6 +5,7 @@ import argparse
 import os
 import torchvision.transforms as transforms
 from tqdm import tqdm
+import yaml
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import get_loader
 from models.encoder import EncoderCNN
@@ -16,59 +17,59 @@ from utils.transforms import get_transforms
 
 
 
-def train():    # ARGUMENT PARSER, switch models from command line if needed EXAMPLE python train.py --model transformer
+def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config configs/transformer.yaml (EXAMPLE)
     parser = argparse.ArgumentParser(description="Train Image Captioning Models")
-    parser.add_argument("--model", type=str, default="lstm", choices=["lstm", "attention", "transformer"], help="Which decoder to use")
-    parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--embed_size", type=int, default=256)
-    parser.add_argument("--hidden_size", type=int, default=512)
-    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
     args = parser.parse_args()
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+    model_type = config['model_type']
+    train_cfg = config['training']
+    arch_cfg = config['architecture']
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # device 
-    print(f"Training {args.model.upper()} model on {device}")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Training {model_type.upper()} model on {device}")
     data_dir = os.path.join(os.getcwd(), 'data')
     train_loader, dataset = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='train',
         transform=get_transforms('train'),
-        batch_size=args.batch_size
+        batch_size=train_cfg['batch_size'] 
     )
-    val_loader, _ = get_loader(  # validation loader
+    val_loader, _ = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='val',
         transform=get_transforms('val'),
-        batch_size=args.batch_size,
-        shuffle=False # Don't need to shuffle validation data
+        batch_size=train_cfg['batch_size'],
+        shuffle=False
     )
     vocab_size = len(dataset.vocab)
     pad_idx = dataset.vocab.stoi["<PAD>"]
-    encoder = EncoderCNN(args.embed_size).to(device) # init models
-    if args.model == "lstm":
-        # decoder = DecoderRNN(args.embed_size, args.hidden_size, vocab_size).to(device) MODIFY!!!!!!!!!!!!!!!
+    encoder = EncoderCNN(arch_cfg['embed_size']).to(device) # init models
+    if model_type == "lstm":
+        # decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
         print("TODO: Initialize Baseline LSTM here")
-    elif args.model == "attention":
-        # decoder MODIFY
+    elif model_type == "attention":
+        # decoder = AttentionDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
         print("TODO: Initialize Attention Decoder here")
-    elif args.model == "transformer":
-        # decoder MODIFY
+    elif model_type == "transformer":
+        # decoder = TransformerDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
         print("TODO: Initialize Transformer Decoder here")
 
-    # LOSS AND OPTIMIZER
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx) # loss shuold ignore <PAD> tokens
     
     # only optimize the decoder parameters and maybe part of lin layer of encoder
     # this is commented, can uncomment once models are completed and rdy for testing
     """
     params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
-    optimizer = optim.Adam(params, lr=args.lr)
-    writer = SummaryWriter(f"runs/{args.model}_experiment") # create tensor board writer
+    # train_cfg['lr']
+    optimizer = optim.Adam(params, lr=train_cfg['lr'])
+    writer = SummaryWriter(f"runs/{model_type}_experiment") # create tensor board writer
     os.makedirs("checkpoints", exist_ok=True)
-    best_val_loss = float('inf') 
-    for epoch in range(args.epochs):
+    best_val_loss = float('inf')
+    for epoch in range(train_cfg['epochs']):
         print(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
         encoder.train() #training
         decoder.train()
@@ -105,19 +106,20 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed EXA
         writer.add_scalar('Loss/Train', avg_train_loss, epoch) # write to tensor board
         writer.add_scalar('Loss/Validation', avg_val_loss, epoch)
 
-        checkpoint = { # checkpoints with val loss
+        checkpoint = { 
             'epoch': epoch + 1,
             'encoder_state_dict': encoder.state_dict(),
             'decoder_state_dict': decoder.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'train_loss': avg_train_loss,
             'val_loss': avg_val_loss,
-            'vocab_size': vocab_size
+            'vocab_size': vocab_size,
+            'model_config': config  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
         }
-        torch.save(checkpoint, os.path.join("checkpoints", f"{args.model}_latest.pth"))
+        torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            torch.save(checkpoint, os.path.join("checkpoints", f"{args.model}_best.pth"))
+            torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_best.pth"))
             print(f"new best validation loss Saved checkpoint.")
     writer.close()
     """

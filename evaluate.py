@@ -9,8 +9,8 @@ from models.encoder import EncoderCNN
 # from models.baseline_lstm import DecoderRNN  modify if needed
 # from models.attention_lstm import AttentionDecoder
 # from models.transformer import TransformerDecoder
-
-
+# TO USE THIS IS JUST A HUMAN VERIFCATION TO MAKE SURE IT ACTUALLY WORKS the actual testing is on metrics.py
+#  example use on the terminal command : python evaluate.py --image test_dog.jpg --checkpoint checkpoints/transformer_best.pth
 def generate_caption(image_path, encoder, decoder, dataset, device, max_length=20): #  Generates a caption for a single image
     transform = get_transforms('val') # load and trans the image
     image = Image.open(image_path).convert("RGB")
@@ -32,39 +32,38 @@ def generate_caption(image_path, encoder, decoder, dataset, device, max_length=2
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Image Captioning Models")
     parser.add_argument("--image", type=str, required=True, help="Path to input image")
-    parser.add_argument("--model", type=str, default="lstm", choices=["lstm", "attention", "transformer"])
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to the saved .pth weights")
-    parser.add_argument("--embed_size", type=int, default=256)
-    parser.add_argument("--hidden_size", type=int, default=512)
     args = parser.parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data_dir = os.path.join(os.getcwd(), 'data') # load vocab dict
+    print(f"Loading checkpoint from {args.checkpoint}...") 
+    checkpoint = torch.load(args.checkpoint, map_location=device) 
+    config = checkpoint['model_config'] # take blueprint and size from checkppint
+    arch_cfg = config['architecture']
+    model_type = config['model_type']
+    vocab_size = checkpoint['vocab_size']
+    data_dir = os.path.join(os.getcwd(), 'data')
     _, dataset = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='val', transform=get_transforms('val'), batch_size=1
     )
-    vocab_size = len(dataset.vocab)
-    encoder = EncoderCNN(args.embed_size).to(device) # init models
+    encoder = EncoderCNN(arch_cfg['embed_size']).to(device) # build
     decoder = None
-    if args.model == "lstm":  # MODIFY THIS ADD MODELS
-        # decoder = DecoderRNN(args.embed_size, args.hidden_size, vocab_size).to(device)
+    if model_type == "lstm":  
+        # decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
         pass
-
-
-
-
-
-
-    print(f"Loading weights from {args.checkpoint}...") 
-    checkpoint = torch.load(args.checkpoint, map_location=device) 
-    encoder.load_state_dict(checkpoint['encoder_state_dict'])    
+    elif model_type == "attention":
+        # decoder = AttentionDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
+        pass
+    elif model_type == "transformer":
+        # decoder = TransformerDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
+        pass
+    encoder.load_state_dict(checkpoint['encoder_state_dict'])     # load weights
     encoder.eval()
-    # UNCOMMENT THE LINES BELOW ONCE YOUR DECODER IS RDY
     # decoder.load_state_dict(checkpoint['decoder_state_dict'])  
     # decoder.eval()
     # caption = generate_caption(args.image, encoder, decoder, dataset, device) 
-    # print(f"\n PREDICTED CAPTION: {caption}\n")  
+    # print(f"\n PREDICTED CAPTION: {caption}\n") 
 
 if __name__ == "__main__":
     main()
