@@ -13,7 +13,9 @@ from models.encoder import EncoderCNN
 # from models.attention_lstm import AttentionDecoder
 # from models.transformer import TransformerDecoder
 
-def train():    # ARGUMENT PARSER, switch models from command line if needed
+
+
+def train():    # ARGUMENT PARSER, switch models from command line if needed EXAMPLE python train.py --model transformer
     parser = argparse.ArgumentParser(description="Train Image Captioning Models")
     parser.add_argument("--model", type=str, default="lstm", choices=["lstm", "attention", "transformer"], help="Which decoder to use")
     parser.add_argument("--epochs", type=int, default=5)
@@ -54,14 +56,17 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed
         # decoder = DecoderRNN(args.embed_size, args.hidden_size, vocab_size).to(device) MODIFY!!!!!!!!!!!!!!!
         print("TODO: Initialize Baseline LSTM here")
     elif args.model == "attention":
+        # decoder MODIFY
         print("TODO: Initialize Attention Decoder here")
     elif args.model == "transformer":
+        # decoder MODIFY
         print("TODO: Initialize Transformer Decoder here")
+
     # LOSS AND OPTIMIZER
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx) # loss shuold ignore <PAD> tokens
     
     # only optimize the decoder parameters and maybe part of lin layer of encoder
-    # this is commented, can uncomment once models are completed and rdy for testing/comparing
+    # this is commented, can uncomment once models are completed and rdy for testing
     """
     params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
     optimizer = optim.Adam(params, lr=args.lr)
@@ -76,8 +81,12 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed
         for idx, (imgs, captions) in tqdm(enumerate(train_loader), total=len(train_loader), desc="Training"):
             imgs, captions = imgs.to(device), captions.to(device)
             features = encoder(imgs)
-            outputs = decoder(features, captions)
-            loss = criterion(outputs.view(-1, vocab_size), captions.view(-1))
+            # input to decoder has everything but the <END> token
+            # model sees <START> and all words up to the last actual word
+            outputs = decoder(features, captions[:, :-1]) 
+            # Targets for Loss- Everything EXCEPT the <START> token
+            # so when model see <START> it pred Word 1
+            loss = criterion(outputs.reshape(-1, vocab_size), captions[:, 1:].reshape(-1))
             train_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()
@@ -88,12 +97,12 @@ def train():    # ARGUMENT PARSER, switch models from command line if needed
         encoder.eval() # validation part
         decoder.eval()
         val_loss = 0
-        with torch.no_grad(): # CRITICAL: Don't calculate gradients during validation!
+        with torch.no_grad():
             for idx, (imgs, captions) in tqdm(enumerate(val_loader), total=len(val_loader), desc="Validating"):
                 imgs, captions = imgs.to(device), captions.to(device)
                 features = encoder(imgs)
-                outputs = decoder(features, captions)
-                loss = criterion(outputs.view(-1, vocab_size), captions.view(-1))
+                outputs = decoder(features, captions[:, :-1])
+                loss = criterion(outputs.reshape(-1, vocab_size), captions[:, 1:].reshape(-1))
                 val_loss += loss.item()
         avg_val_loss = val_loss / len(val_loader)
         print(f"Validation Loss: {avg_val_loss:.4f}")
