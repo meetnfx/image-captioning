@@ -9,6 +9,7 @@ import yaml
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import get_loader
 from models.encoder import EncoderCNN
+from models.transformer import TransformerDecoder
 from utils.transforms import get_transforms
 # ADD DECODER IMPORTS HERE TO ACTUALLY RUN THIS
 # from models.baseline_lstm import DecoderRNN
@@ -43,7 +44,8 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
         split='val',
         transform=get_transforms('val'),
         batch_size=train_cfg['batch_size'],
-        shuffle=False
+        shuffle=False,
+        vocab=dataset.vocab,
     )
     vocab_size = len(dataset.vocab)
     pad_idx = dataset.vocab.stoi["<PAD>"]
@@ -55,22 +57,26 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
         # decoder = AttentionDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
         print("TODO: Initialize Attention Decoder here")
     elif model_type == "transformer":
-        # decoder = TransformerDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
-        print("TODO: Initialize Transformer Decoder here")
+        decoder = TransformerDecoder(
+            **arch_cfg,
+            vocab_size=vocab_size,
+            pad_idx=pad_idx,
+            start_idx=dataset.vocab.stoi["<START>"],
+            end_idx=dataset.vocab.stoi["<END>"],
+        ).to(device)
+    else:
+        raise ValueError(f"Unsupported model_type: {model_type}")
 
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx) # loss shuold ignore <PAD> tokens
-    
+
     # only optimize the decoder parameters and maybe part of lin layer of encoder
-    # this is commented, can uncomment once models are completed and rdy for testing
-    """
     params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
-    # train_cfg['lr']
     optimizer = optim.Adam(params, lr=train_cfg['lr'])
     writer = SummaryWriter(f"runs/{model_type}_experiment") # create tensor board writer
     os.makedirs("checkpoints", exist_ok=True)
     best_val_loss = float('inf')
     for epoch in range(train_cfg['epochs']):
-        print(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
+        print(f"\n--- Epoch {epoch+1}/{train_cfg['epochs']} ---")
         encoder.train() #training
         decoder.train()
         train_loss = 0
@@ -114,6 +120,8 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             'train_loss': avg_train_loss,
             'val_loss': avg_val_loss,
             'vocab_size': vocab_size,
+            'vocab_stoi': dataset.vocab.stoi,
+            'vocab_itos': dataset.vocab.itos,
             'model_config': config  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
         }
         torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))
@@ -122,6 +130,5 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_best.pth"))
             print(f"new best validation loss Saved checkpoint.")
     writer.close()
-    """
 if __name__ == "__main__":
     train()

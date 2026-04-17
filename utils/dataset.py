@@ -84,8 +84,26 @@ class MyCollate:
         targets = pad_sequence(targets, batch_first=True, padding_value=self.pad_idx)
         return imgs, targets
 
-def get_loader(root_dir, ann_file, split='train', transform=None, batch_size=32, num_workers=4, shuffle=True, pin_memory=True):
-    dataset = COCODataset(root_dir, ann_file, split=split, transform=transform)
+def get_loader(
+    root_dir,
+    ann_file,
+    split='train',
+    transform=None,
+    batch_size=32,
+    num_workers=4,
+    shuffle=True,
+    pin_memory=True,
+    vocab=None,
+    freq_threshold=5,
+):
+    dataset = COCODataset(
+        root_dir,
+        ann_file,
+        split=split,
+        transform=transform,
+        vocab=vocab,
+        freq_threshold=freq_threshold,
+    )
     pad_idx = dataset.vocab.stoi["<PAD>"]
     loader = DataLoader(
         dataset=dataset,
