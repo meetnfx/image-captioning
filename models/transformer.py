@@ -30,7 +30,7 @@ class TransformerDecoder(nn.Module):
         num_layers=6,
         hidden_size=512,
         dropout=0.1,
-        max_length=50,
+        max_length=256,
         pad_idx=0,
         start_idx=1,
         end_idx=2,
@@ -65,8 +65,19 @@ class TransformerDecoder(nn.Module):
             diagonal=1,
         )
 
+    def _ensure_position_capacity(self, seq_length, device):
+        if seq_length <= self.position_embedding.num_embeddings:
+            return
+        new_size = int(max(seq_length, self.position_embedding.num_embeddings * 2))
+        new_pos = nn.Embedding(new_size, self.embed_size).to(device=device, dtype=self.position_embedding.weight.dtype)
+        with torch.no_grad():
+            new_pos.weight[: self.position_embedding.num_embeddings].copy_(self.position_embedding.weight)
+        self.position_embedding = new_pos
+        self.max_length = new_size
+
     def forward(self, features, captions):
         batch_size, seq_length = captions.shape
+        self._ensure_position_capacity(seq_length, captions.device)
         positions = torch.arange(seq_length, device=captions.device).unsqueeze(0).expand(batch_size, -1)
 
         tgt = self.word_embedding(captions) + self.position_embedding(positions)
