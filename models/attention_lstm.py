@@ -17,3 +17,49 @@ In addition to whatever you work on for the models, To work with the jumbo i did
    Outputs:
        predicted_ids: [1, generated_length] (tensor of the integer word IDs)
 """
+
+
+
+import torch
+import torch.nn as nn
+
+class LSTMAttention(nn.Module):
+    def __init__(self, embed_size, hidden_size, vocab_size, start_token, stop_token, seq_length):
+        super().__init__()
+
+        self.embed_size = embed_size
+        self.hidden_size = hidden_size
+        self.vocab_size = vocab_size
+        self.start_token = start_token
+        self.seq_length = seq_length
+        self.stop_token = stop_token
+
+        self.lstm = nn.LSTM(embed_size, hidden_size)
+        self.linear_att = nn.Linear(hidden_size, 1)
+        self.linear = nn.Linear(hidden_size, vocab_size)
+        self.softmax = nn.Softmax(1)
+
+
+    def forward(self, x):
+        output, (hidden, context) = self.lstm(x)
+        raw_att = self.linear_att(output).squeeze(-1)
+        att_scores = self.softmax(raw_att)
+        att_output = torch.bmm(att_scores.unsqueeze(1), output).squeeze(1)
+        final_output = self.linear(att_output)
+
+        return final_output
+        
+    def sample(self, features, max_length=20):
+        current_input = torch.full(1, self.start_token)
+        predicted_ids = []
+
+        for _ in range(max_length):
+            output, hidden = self.forward(current_input)
+            word = output.argmax()
+            predicted_ids.append(word)
+            current_input = output
+
+            if word == self.stop_token:
+                break
+
+        return predicted_ids
