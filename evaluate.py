@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from utils.dataset import get_loader
 from utils.transforms import get_transforms
 from models.encoder import EncoderCNN
-# from models.baseline_lstm import DecoderRNN  modify if needed
+from models.baseline_lstm import DecoderRNN  
 # from models.attention_lstm import AttentionDecoder
 # from models.transformer import TransformerDecoder
 # TO USE THIS IS JUST A HUMAN VERIFCATION TO MAKE SURE IT ACTUALLY WORKS the actual testing is on metrics.py
@@ -50,7 +50,7 @@ def main():
     encoder = EncoderCNN(arch_cfg['embed_size']).to(device) # build
     decoder = None
     if model_type == "lstm":  
-        # decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
+        decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
         pass
     elif model_type == "attention":
         # decoder = AttentionDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
@@ -60,10 +60,10 @@ def main():
         pass
     encoder.load_state_dict(checkpoint['encoder_state_dict'])     # load weights
     encoder.eval()
-    # decoder.load_state_dict(checkpoint['decoder_state_dict'])  
-    # decoder.eval()
-    # caption = generate_caption(args.image, encoder, decoder, dataset, device) 
-    # print(f"\n PREDICTED CAPTION: {caption}\n") 
+    decoder.load_state_dict(checkpoint['decoder_state_dict'])  
+    decoder.eval()
+    caption = generate_caption(args.image, encoder, decoder, dataset, device) 
+    print(f"\n PREDICTED CAPTION: {caption}\n") 
 
 if __name__ == "__main__":
     main()
