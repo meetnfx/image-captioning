@@ -44,20 +44,29 @@ class DecoderRNN(nn.Module):
         return predictions[:, :-1, :]                     # [batch, seq_len-1, vocab_size]
 
     def sample(self, features, max_length=20):
-    predicted_ids = []
-    inputs = features.unsqueeze(1)  # [1, 1, embed_size] — image feature as step 0
-    states = None
+        """
+        Used by evaluate.py for greedy decoding on a new image.
 
-    for _ in range(max_length):
-        hiddens, states = self.lstm(inputs, states)     # [1, 1, hidden_size]
-        output = self.linear(hiddens.squeeze(1))        # [1, vocab_size]
-        predicted = output.argmax(dim=1)                # [1]
-        predicted_ids.append(predicted.item())
+        Args:
+            features:   [1, embed_size]  - single image feature from EncoderCNN
+            max_length: int              - max words to generate
 
-        if predicted.item() == 2:                       # <END>
-            break
+        Returns:
+            predicted_ids: [1, generated_length] - tensor of predicted word IDs
+        """
+        predicted_ids = []
+        inputs = features.unsqueeze(1)  # [1, 1, embed_size]
+        states = None
 
-        # embed the predicted token for the next step
-        inputs = self.dropout(self.embed(predicted)).unsqueeze(1)  # apply same dropout as forward()
-    
-    return torch.tensor(predicted_ids).unsqueeze(0)
+        for _ in range(max_length):
+            hiddens, states = self.lstm(inputs, states)    # [1, 1, hidden_size]
+            output = self.linear(hiddens.squeeze(1))       # [1, vocab_size]
+            predicted = output.argmax(dim=1)               # [1]
+            predicted_ids.append(predicted.item())
+
+            if predicted.item() == 2:                      # 2 = <END> token
+                break
+
+            inputs = self.embed(predicted).unsqueeze(1)    # [1, 1, embed_size]
+
+        return torch.tensor(predicted_ids).unsqueeze(0)    # [1, generated_length]
