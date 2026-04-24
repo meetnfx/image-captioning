@@ -13,6 +13,7 @@ class DecoderRNN(nn.Module):
             dropout:     Dropout probability
         """
         super(DecoderRNN, self).__init__()
+        self.hidden_size = kwargs.get('hidden_size', hidden_size)
         self.embed = nn.Embedding(vocab_size, embed_size)
         self.lstm = nn.LSTM(
             input_size=embed_size,
@@ -35,6 +36,7 @@ class DecoderRNN(nn.Module):
         Returns:
             predictions: [batch_size, seq_length - 1, vocab_size]
         """
+        features = features.mean(dim=1)
         embeddings = self.dropout(self.embed(captions))   # [batch, seq_len-1, embed_size]
         features = features.unsqueeze(1)                  # [batch, 1, embed_size]
         inputs = torch.cat((features, embeddings), dim=1) # [batch, seq_len, embed_size]
@@ -54,6 +56,7 @@ class DecoderRNN(nn.Module):
         Returns:
             predicted_ids: [1, generated_length] - tensor of predicted word IDs
         """
+        features = features.mean(dim=1)
         predicted_ids = []
         inputs = features.unsqueeze(1)  # [1, 1, embed_size]
         states = None
