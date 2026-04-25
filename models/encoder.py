@@ -6,21 +6,33 @@ class EncoderCNN(nn.Module):
     def __init__(self, embed_size, train_CNN=False):
         super(EncoderCNN, self).__init__()
         self.train_CNN = train_CNN
-        resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT) # use resnet50 already done
-        modules = list(resnet.children())[:-1]  # remove final layer, so we get raw features
+        resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+        # Remove the last two layers: AdaptiveAvgPool2d and Linear (fc)
+        modules = list(resnet.children())[:-2] 
         self.resnet = nn.Sequential(*modules)
-        self.linear = nn.Linear(resnet.fc.in_features, embed_size) # Lin layer map 2048 resnet feature to decoder size
+
+        # Projection layer to convert 2048 resnet features to embed_size
+        self.projection = nn.Linear(2048, embed_size)
         self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
-        for name, param in self.resnet.named_parameters(): # freeze resnet weight maybe to save ram
-            if "layer4" in name and train_CNN: # misc change final layer if needed
+
+        for name, param in self.resnet.named_parameters():
+            if "layer4" in name and train_CNN:
                 param.requires_grad = True
             else:
                 param.requires_grad = False
+
     def forward(self, images):
-        features = self.resnet(images)   # IMPORTANT [batch_size, 3, 224, 224] input
-        features = features.view(features.size(0), -1)  # flat feature batch size, 2048, 1,1 to batch size,2048
-        features = self.bn(self.linear(features)) # then map to embed)size
+        # resnet(images) -> [batch, 2048, 7, 7]
+        features = self.resnet(images)
+
+        # Reshape to [batch, 49, 2048]
+        features = features.permute(0, 2, 3, 1)
+        features = features.view(features.size(0), -1, features.size(-1))
+
+        # Project to [batch, 49, embed_size]
+        features = self.projection(features)
         return features
+
     
 
 

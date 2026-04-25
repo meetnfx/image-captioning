@@ -42,8 +42,15 @@ def main():
     model_type = config['model_type']
     vocab_size = checkpoint['vocab_size']
     data_dir = os.path.join(os.getcwd(), 'data')
+    images_dir = os.path.join(data_dir, 'images')
+
+    if not os.path.exists(images_dir) or not os.listdir(images_dir):
+        print(f"ERROR: Image directory not found or empty at {images_dir}")
+        print("Please ensure you have run 'scripts/download_coco.sh' and are in the correct directory.")
+        return
+
     _, dataset = get_loader(
-        root_dir=os.path.join(data_dir, 'images'),
+        root_dir=images_dir,
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='val', transform=get_transforms('val'), batch_size=1
     )

@@ -1,5 +1,5 @@
 # should follow this template
-model_type: "transformer" # OR "lstm", "attention"
+model_type: "attention" # OR "lstm", "attention"
 training:
   epochs: 5          # Prob not modify if we do we should all have the same for all 3 models
   batch_size: 32      # Prob not modify if we do we should all have the same for all 3 models
