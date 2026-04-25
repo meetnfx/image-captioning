@@ -3,6 +3,9 @@ A PyTorch implementation comparing sequence generation architectures on the MS C
 
 Attention LSTM loss:
 ![A line-plot of Training vs. Validation loss](loss_plot.png)
+
+Link to trained model .pth file: https://drive.google.com/file/d/1mUseeJIrsPLYVWeJYfMZ4BDhhQ1miCug/view?usp=sharing
+
 ## Project Environment
 * **Primary Python Version:** 3.10
 * **Dataset:** MS COCO (Karpathy Splits)
