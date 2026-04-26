@@ -1,17 +1,10 @@
-# should follow this template
 model_type: "attention" # OR "lstm", "attention"
 training:
-  epochs: 5          # Prob not modify if we do we should all have the same for all 3 models
-  batch_size: 32      # Prob not modify if we do we should all have the same for all 3 models
-  lr: 0.001         # Can modify whatever
-  # Any other training parameters added here will be IGNORED by train.py
-
+  epochs: 10
+  batch_size: 64
+  lr: 0.001
 architecture:
-  embed_size: 256     # Prob not modify if we do we should all have the same for all 3 models
-  #  ANYTHING HERE YOU CAN ADD ANY VARIABLE FOR YOUR MODEL TO TUNE THESE ARE JUST SOME EXAMPLES, U CAN ADD ANYTHING OR MODIFY
-  # will  pass them to the Decoders and save them in the weights
+  embed_size: 512
   hidden_size: 512
-  num_heads: 8
-  num_layers: 6
-  forward_expansion: 4
-  dropout: 0.1
+  num_layers: 1
+  dropout: 0.3

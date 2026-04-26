@@ -11,6 +11,8 @@ from models.encoder import EncoderCNN
 from utils.transforms import get_transforms
 from models.attention_lstm import AttentionDecoder
 import matplotlib.pyplot as plt
+# from models.attention_lstm import AttentionDecoder
+# from models.transformer import TransformerDecoder
 
 def train():
     parser = argparse.ArgumentParser(description="Train Image Captioning Models")
@@ -47,14 +49,13 @@ def train():
 
     vocab_size = len(dataset.vocab)
 
-    pad_token = dataset.vocab.stoi["<PAD>"]
+    pad_idx = dataset.vocab.stoi["<PAD>"]
 
     encoder = EncoderCNN(arch_cfg["embed_size"]).to(device)
 
     if model_type == "lstm":
-        pass
-        # decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
-        # print("TODO: Initialize Baseline LSTM here")
+        decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
+        print("TODO: Initialize Baseline LSTM here")
     elif model_type == "attention":
         decoder = AttentionDecoder(
             **arch_cfg,
@@ -68,21 +69,20 @@ def train():
         # decoder = TransformerDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
         # print("TODO: Initialize Transformer Decoder here")
 
-    criterion = nn.CrossEntropyLoss(ignore_index=pad_token)
-
-
-    params = list(decoder.parameters()) + list(encoder.projection.parameters()) + list(encoder.bn.parameters())
-    optimizer = optim.Adam(params, lr=train_cfg["lr"], weight_decay=train_cfg.get("weight_decay", 0))
-
+    criterion = nn.CrossEntropyLoss(ignore_index=pad_idx) # loss shuold ignore <PAD> tokens
+    
+    # only optimize the decoder parameters and maybe part of lin layer of encoder
+    # this is commented, can uncomment once models are completed and rdy for testing
+    params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.norm.parameters())
+    # train_cfg['lr']
+    optimizer = optim.Adam(params, lr=train_cfg['lr'])
     os.makedirs("checkpoints", exist_ok=True)
     best_val_loss = float('inf')
-
-    avg_train_loss_history = []
-    avg_validation_loss_history = []
-
-    for epoch in range(train_cfg["epochs"]):
-        print(f"\n--- Epoch {epoch+1}/{train_cfg["epochs"]} ---")
-        encoder.train()
+    history_train_loss = []  # tracking loss
+    history_val_loss = []
+    for epoch in range(train_cfg['epochs']):
+        print(f"\n--- Epoch {epoch+1}/{train_cfg['epochs']} ---")
+        encoder.train() #training
         decoder.train()
         train_loss = 0
 
@@ -102,7 +102,6 @@ def train():
 
         avg_train_loss = train_loss / len(train_loader)
         print(f"Training Loss: {avg_train_loss:.4f}")
-        avg_train_loss_history.append(avg_train_loss)
 
         encoder.eval()
         decoder.eval()
@@ -119,35 +118,43 @@ def train():
         avg_val_loss = val_loss / len(val_loader)
         print(f"Validation Loss: {avg_val_loss:.4f}")
 
-        avg_validation_loss_history.append(avg_val_loss)
+        history_train_loss.append(avg_train_loss) # loss to list
+        history_val_loss.append(avg_val_loss)
 
-        checkpoint = {
-            "epoch": epoch + 1,
-            "encoder_state_dict": encoder.state_dict(),
-            "decoder_state_dict": decoder.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "vocab_size": vocab_size,
-            "model_config": config
+        checkpoint = { 
+            'epoch': epoch + 1,
+            'encoder_state_dict': encoder.state_dict(),
+            'decoder_state_dict': decoder.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss': avg_train_loss,
+            'val_loss': avg_val_loss,
+            'vocab_size': vocab_size,
+            'model_config': config  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
         }
 
         torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_best.pth"))
-            print(f"New best validation loss! Saved checkpoint.")
 
+            print(f"new best validation loss Saved checkpoint.")
+
+    print("\nGenerating training curve...") # graphs
     plt.figure(figsize=(10, 6))
-    plt.plot(avg_train_loss_history, '-o', label="Training Loss")
-    plt.plot(avg_validation_loss_history, '-o', label="Validation Loss")
-    plt.title(f"Training vs Validation Loss ({model_type})")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
+    epochs_range = range(1, train_cfg['epochs'] + 1)
+    plt.plot(epochs_range, history_train_loss, label='Train Loss', color='blue', marker='o')
+    plt.plot(epochs_range, history_val_loss, label='Validation Loss', color='orange', marker='s')
+    plt.title(f'{model_type.upper()} Model: Training and Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Cross Entropy Loss')
+    plt.xticks(epochs_range)
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plot_path = os.path.join("checkpoints", f"{model_type}_loss_curve.png")     # Save the graph right next to weights
+    plt.savefig(plot_path, bbox_inches='tight', dpi=300) 
+    print(f"Saved high-res loss graph to {plot_path}")
     
-    plt.savefig("train_val_loss.png")
-    print("Training/Validation Loss chart saved to train_val_loss.png")
-            
+    plt.close() # Clean up memory
 
 if __name__ == "__main__":
     train()
