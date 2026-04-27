@@ -83,7 +83,7 @@ class TransformerDecoder(nn.Module):
         tgt = self.word_embedding(captions) + self.position_embedding(positions)
         tgt = self.dropout(tgt)
 
-        memory = self.feature_projection(features).unsqueeze(1)
+        memory = self.feature_projection(features)
         tgt_mask = self._build_causal_mask(seq_length, captions.device)
         tgt_padding_mask = captions.eq(self.pad_idx)
 
