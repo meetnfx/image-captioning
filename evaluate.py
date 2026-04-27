@@ -3,6 +3,7 @@ import argparse
 import os
 from PIL import Image
 import matplotlib.pyplot as plt
+from utils.dataset import get_loader
 from utils.transforms import get_transforms
 from models.encoder import EncoderCNN
 from models.transformer import TransformerDecoder
