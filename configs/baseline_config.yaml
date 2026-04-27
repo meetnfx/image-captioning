@@ -1,4 +1,4 @@
-model_type: "lstm"
+model_type: "attention" # OR "lstm", "attention"
 training:
   epochs: 10
   batch_size: 64
