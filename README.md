@@ -1,5 +1,10 @@
 # Image Captioning Project (Comparison of CNN-LSTM, Attention, and Transformers)
 A PyTorch implementation comparing sequence generation architectures on the MS COCO dataset.
+
+
+
+
+
 ## Project Environment
 * **Primary Python Version:** 3.10
 * **Dataset:** MS COCO (Karpathy Splits)

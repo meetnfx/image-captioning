@@ -13,8 +13,7 @@ pycocoevalcap
 
 # Utilities
 pyyaml
+tensorboard
 
 # did not include torch version since we use diff gpu/cpu (cloud vs local)
-tensorboard==2.20.0
-
-
+torch

@@ -6,6 +6,7 @@ from torch.nn.utils.rnn import pad_sequence
 from PIL import Image
 from collections import Counter
 
+
 class Vocabulary:
     def __init__(self, freq_threshold=5):
         self.itos = {0: "<PAD>", 1: "<START>", 2: "<END>", 3: "<UNK>"}
@@ -18,7 +19,7 @@ class Vocabulary:
         return str(text).lower().split()
     def build_vocabulary(self, sentence_list):
         frequencies = Counter()
-        idx = 4 
+        idx = 4
         for sentence in sentence_list:
             for word in self.tokenizer_eng(sentence):
                 frequencies[word] += 1
@@ -64,6 +65,7 @@ class COCODataset(Dataset):
     def __len__(self):
         return len(self.dataset_pairs)
 
+
     def __getitem__(self, index):
         img_path, caption = self.dataset_pairs[index]
         image = Image.open(img_path).convert("RGB")
@@ -73,6 +75,7 @@ class COCODataset(Dataset):
         numericalized_caption += self.vocab.numericalize(caption)
         numericalized_caption.append(self.vocab.stoi["<END>"])
         return image, torch.tensor(numericalized_caption)
+
 
 class MyCollate:
     def __init__(self, pad_idx):
