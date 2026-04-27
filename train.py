@@ -9,6 +9,7 @@ import yaml
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import get_loader
 from models.encoder import EncoderCNN
+from models.transformer import TransformerDecoder
 from utils.transforms import get_transforms
 import matplotlib.pyplot as plt
 # ADD DECODER IMPORTS HERE TO ACTUALLY RUN THIS
@@ -65,8 +66,15 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             seq_length=20
         ).to(device)
     elif model_type == "transformer":
-        # decoder = TransformerDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
-        print("TODO: Initialize Transformer Decoder here")
+        decoder = TransformerDecoder(
+            **arch_cfg,
+            vocab_size=vocab_size,
+            pad_idx=pad_idx,
+            start_idx=dataset.vocab.stoi["<START>"],
+            end_idx=dataset.vocab.stoi["<END>"],
+        ).to(device)
+    else:
+        raise ValueError(f"Unsupported model_type: {model_type}")
 
 
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx) # loss shuold ignore <PAD> tokens
@@ -128,6 +136,8 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             'train_loss': avg_train_loss,
             'val_loss': avg_val_loss,
             'vocab_size': vocab_size,
+            'vocab_stoi': dataset.vocab.stoi,
+            'vocab_itos': dataset.vocab.itos,
             'model_config': config  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
         }
         torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))

@@ -40,6 +40,6 @@ Click the links below to download the dataset zips via your browser.
 3. [MS COCO Val 2014 (val2014.zip)](http://images.cocodataset.org/zips/val2014.zip)
 Move the dataset_coco.json to data/annotations
 Unzip Train 2014 into data/images/train2014
-Unzip Val 2014 into data/iamges/val2014
+Unzip Val 2014 into data/images/val2014
 ### Github
 when working on this, create feature branches and then merge to main when done.

@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from utils.dataset import get_loader
 from utils.transforms import get_transforms
 from models.encoder import EncoderCNN
+from models.transformer import TransformerDecoder
+# from models.baseline_lstm import DecoderRNN  modify if needed
 from models.baseline_lstm import DecoderRNN  
 # from models.attention_lstm import AttentionDecoder
 # from models.transformer import TransformerDecoder
@@ -28,6 +30,17 @@ def generate_caption(image_path, encoder, decoder, dataset, device, max_length=2
             break
         caption.append(word)
     return " ".join(caption)
+
+
+class CheckpointVocabulary:
+    def __init__(self, stoi, itos):
+        self.stoi = stoi
+        self.itos = {int(idx): token for idx, token in itos.items()}
+
+
+class CheckpointDataset:
+    def __init__(self, stoi, itos):
+        self.vocab = CheckpointVocabulary(stoi, itos)
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Image Captioning Models")
@@ -60,11 +73,17 @@ def main():
         decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
         pass
     elif model_type == "attention":
-        # decoder = AttentionDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
-        pass
+        raise NotImplementedError("Attention evaluation is not being modified here.")
     elif model_type == "transformer":
-        # decoder = TransformerDecoder(**arch_cfg, vocab_size=vocab_size).to(device)
-        pass
+        decoder = TransformerDecoder(
+            **arch_cfg,
+            vocab_size=vocab_size,
+            pad_idx=dataset.vocab.stoi["<PAD>"],
+            start_idx=dataset.vocab.stoi["<START>"],
+            end_idx=dataset.vocab.stoi["<END>"],
+        ).to(device)
+    else:
+        raise ValueError(f"Unsupported model_type: {model_type}")
     encoder.load_state_dict(checkpoint['encoder_state_dict'])     # load weights
     encoder.eval()
     decoder.load_state_dict(checkpoint['decoder_state_dict'])  
