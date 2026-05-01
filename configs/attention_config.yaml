@@ -7,7 +7,7 @@ training:
   weight_decay: 0.00001 # Small regularization to prevent overfitting
 
 architecture:
-  embed_size: 256     
+  embed_size: 512     
   hidden_size: 512
   num_layers: 1
   dropout: 0.4        # Increased dropout to combat overfitting

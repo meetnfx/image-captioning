@@ -58,7 +58,7 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
         decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
         print("TODO: Initialize Baseline LSTM here")
     elif model_type == "attention":
-        decoder = LSTMAttention( # <--- CORRECT NAME
+        decoder = LSTMAttention( # 
             **arch_cfg,
             vocab_size=vocab_size,
             start_token=dataset.vocab.stoi["<START>"],
@@ -138,7 +138,7 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             'vocab_size': vocab_size,
             'vocab_stoi': dataset.vocab.stoi,
             'vocab_itos': dataset.vocab.itos,
-            'model_config': config  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
+            'model_config': config  # WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
         }
         torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))
         if avg_val_loss < best_val_loss:

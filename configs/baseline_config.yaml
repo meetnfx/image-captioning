@@ -4,7 +4,7 @@ training:
   batch_size: 64
   lr: 0.001
 architecture:
-  embed_size: 256
+  embed_size: 512
   hidden_size: 512
   num_layers: 1
   dropout: 0.5
