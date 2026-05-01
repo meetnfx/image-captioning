@@ -65,7 +65,7 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
         decoder = DecoderRNN(**arch_cfg, vocab_size=vocab_size).to(device)
         print("TODO: Initialize Baseline LSTM here")
     elif model_type == "attention":
-        decoder = LSTMAttention( # <--- CORRECT NAME
+        decoder = LSTMAttention( # 
             **arch_cfg,
             vocab_size=vocab_size,
             start_token=dataset.vocab.stoi["<START>"],
