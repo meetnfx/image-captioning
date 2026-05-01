@@ -37,6 +37,9 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
     data_dir = os.path.join(os.getcwd(), 'data')
     train_fraction = train_cfg.get('train_fraction', 1.0)
     subset_seed = train_cfg.get('subset_seed', 42)
+    regime_pct = int(round(float(train_fraction) * 100))
+    run_prefix = f"{model_type}_{regime_pct}pct"
+    print(f"Run tag: {run_prefix} (subset_seed={subset_seed})")
     train_loader, dataset = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
@@ -146,10 +149,10 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             'train_fraction': float(train_fraction),
             'subset_seed': int(subset_seed),
         }
-        torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))
+        torch.save(checkpoint, os.path.join("checkpoints", f"{run_prefix}_latest.pth"))
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_best.pth"))
+            torch.save(checkpoint, os.path.join("checkpoints", f"{run_prefix}_best.pth"))
             print(f"new best validation loss Saved checkpoint.")
 
 
@@ -164,7 +167,7 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
     plt.xticks(epochs_range)
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.7)
-    plot_path = os.path.join("checkpoints", f"{model_type}_loss_curve.png")     # Save the graph right next to weights
+    plot_path = os.path.join("checkpoints", f"{run_prefix}_loss_curve.png")     # Save the graph right next to weights
     plt.savefig(plot_path, bbox_inches='tight', dpi=300)
     print(f"Saved high-res loss graph to {plot_path}")
    
