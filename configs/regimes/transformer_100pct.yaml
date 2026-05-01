@@ -1,0 +1,14 @@
+architecture:
+  dropout: 0.1
+  embed_size: 512
+  forward_expansion: 4
+  hidden_size: 512
+  num_heads: 8
+  num_layers: 6
+model_type: transformer
+training:
+  batch_size: 64
+  epochs: 15
+  lr: 5.0e-05
+  train_fraction: 1.0
+  subset_seed: 42

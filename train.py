@@ -35,12 +35,16 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Training {model_type.upper()} model on {device}")
     data_dir = os.path.join(os.getcwd(), 'data')
+    train_fraction = train_cfg.get('train_fraction', 1.0)
+    subset_seed = train_cfg.get('subset_seed', 42)
     train_loader, dataset = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
         split='train',
         transform=get_transforms('train'),
-        batch_size=train_cfg['batch_size']
+        batch_size=train_cfg['batch_size'],
+        train_fraction=train_fraction,
+        subset_seed=subset_seed,
     )
     val_loader, _ = get_loader(
         root_dir=os.path.join(data_dir, 'images'),
@@ -138,7 +142,9 @@ def train():   # TO RUN THIS FILE ITS JUST THIS NOW python train.py --config con
             'vocab_size': vocab_size,
             'vocab_stoi': dataset.vocab.stoi,
             'vocab_itos': dataset.vocab.itos,
-            'model_config': config  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
+            'model_config': config,  # <--- WE SAVE THE YAML BLUEPRINT INSIDE THE WEIGHTS
+            'train_fraction': float(train_fraction),
+            'subset_seed': int(subset_seed),
         }
         torch.save(checkpoint, os.path.join("checkpoints", f"{model_type}_latest.pth"))
         if avg_val_loss < best_val_loss:

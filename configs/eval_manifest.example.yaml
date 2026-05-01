@@ -1,0 +1,47 @@
+# Example manifest for comparing three architectures × data regimes.
+# Train separate checkpoints with training.train_fraction: 0.1 | 0.25 | 0.5 | 1.0
+# in each model's YAML, then point each entry to the saved best checkpoint.
+#
+# Run:
+#   python metrics.py --manifest configs/eval_manifest.example.yaml \
+#     --output results/metrics_by_regime.csv --print_regime_table
+
+runs:
+  - name: lstm_10pct
+    checkpoint: checkpoints/lstm_best_frac0.1.pth
+    train_fraction: 0.1
+  - name: lstm_25pct
+    checkpoint: checkpoints/lstm_best_frac0.25.pth
+    train_fraction: 0.25
+  - name: lstm_50pct
+    checkpoint: checkpoints/lstm_best_frac0.5.pth
+    train_fraction: 0.5
+  - name: lstm_100pct
+    checkpoint: checkpoints/lstm_best.pth
+    train_fraction: 1.0
+
+  - name: attention_10pct
+    checkpoint: checkpoints/attention_best_frac0.1.pth
+    train_fraction: 0.1
+  - name: attention_25pct
+    checkpoint: checkpoints/attention_best_frac0.25.pth
+    train_fraction: 0.25
+  - name: attention_50pct
+    checkpoint: checkpoints/attention_best_frac0.5.pth
+    train_fraction: 0.5
+  - name: attention_100pct
+    checkpoint: checkpoints/attention_best.pth
+    train_fraction: 1.0
+
+  - name: transformer_10pct
+    checkpoint: checkpoints/transformer_best_frac0.1.pth
+    train_fraction: 0.1
+  - name: transformer_25pct
+    checkpoint: checkpoints/transformer_best_frac0.25.pth
+    train_fraction: 0.25
+  - name: transformer_50pct
+    checkpoint: checkpoints/transformer_best_frac0.5.pth
+    train_fraction: 0.5
+  - name: transformer_100pct
+    checkpoint: checkpoints/transformer_best.pth
+    train_fraction: 1.0

@@ -1,0 +1,13 @@
+architecture:
+  dropout: 0.4
+  embed_size: 256
+  hidden_size: 512
+  num_layers: 1
+model_type: attention
+training:
+  batch_size: 64
+  epochs: 10
+  lr: 0.0004
+  weight_decay: 1.0e-05
+  train_fraction: 0.1
+  subset_seed: 42
