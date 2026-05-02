@@ -9,6 +9,10 @@ those checkpoints in a manifest (see configs/eval_manifest.example.yaml).
 Examples:
   python metrics.py --checkpoint checkpoints/transformer_best.pth
   python metrics.py --manifest configs/eval_manifest.example.yaml --output results/metrics.csv
+  # GPU server: write captions only; locally score full metrics from JSON:
+  python metrics.py --checkpoint ckpt.pth --captions_only --predictions_json preds.json --split val
+  python metrics.py --from_predictions preds.json --model_type lstm --eval_train_fraction 0.1 --split val
+  python metrics.py --manifest configs/eval_predictions_manifest.example.yaml --output results/from_json.csv --print_regime_table
 """
 
 from __future__ import annotations
@@ -176,6 +180,7 @@ def evaluate_checkpoint(
     batch_size: int,
     max_length: int,
     skip_rouge: bool = False,
+    captions_only: bool = False,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, float]]:
     ckpt = torch.load(checkpoint_path, map_location=device)
     references, items = load_karpathy_split_index(ann_file, images_root, split)
@@ -183,12 +188,31 @@ def evaluate_checkpoint(
     preds = generate_predictions(
         encoder, decoder, vocab, items, device, batch_size, max_length
     )
+    if captions_only:
+        return ckpt, preds, {}
     metrics = compute_caption_metrics(
         references,
         preds,
         include_rouge=not skip_rouge,
     )
     return ckpt, preds, metrics
+
+
+def evaluate_predictions_json(
+    predictions_path: str,
+    ann_file: str,
+    images_root: str,
+    split: str,
+    skip_rouge: bool,
+) -> Dict[str, float]:
+    references, _ = load_karpathy_split_index(ann_file, images_root, split)
+    with open(predictions_path, "r", encoding="utf-8") as f:
+        preds = json.load(f)
+    return compute_caption_metrics(
+        references,
+        preds,
+        include_rouge=not skip_rouge,
+    )
 
 
 def _row_from_run(
@@ -208,6 +232,25 @@ def _row_from_run(
         "checkpoint": checkpoint_path,
         "model_type": model_type,
         "train_fraction": train_fraction if train_fraction is not None else "",
+    }
+    row.update(metrics)
+    return row
+
+
+def _row_from_predictions_run(
+    name: Optional[str],
+    predictions_path: str,
+    metrics: Dict[str, float],
+    model_type: str,
+    train_fraction_override: Optional[float],
+) -> Dict[str, Any]:
+    row: Dict[str, Any] = {
+        "name": name or os.path.splitext(os.path.basename(predictions_path))[0],
+        "checkpoint": predictions_path,
+        "model_type": model_type,
+        "train_fraction": train_fraction_override
+        if train_fraction_override is not None
+        else "",
     }
     row.update(metrics)
     return row
@@ -274,6 +317,31 @@ def main():
     parser.add_argument("--checkpoint", type=str, default=None, help="Single .pth checkpoint")
     parser.add_argument("--manifest", type=str, default=None, help="YAML with a list of runs")
     parser.add_argument(
+        "--from_predictions",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Score one captions JSON (same format as --predictions_json output); use --model_type for regime table",
+    )
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="",
+        help="Label for CSV/table when using --from_predictions (e.g. lstm, attention, transformer)",
+    )
+    parser.add_argument(
+        "--eval_train_fraction",
+        type=float,
+        default=None,
+        help="Regime label for CSV/table when using --from_predictions (e.g. 0.1 for 10%%)",
+    )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        default=None,
+        help="Row name when using --from_predictions (default: JSON filename stem)",
+    )
+    parser.add_argument(
         "--data_dir",
         type=str,
         default=os.path.join(os.getcwd(), "data"),
@@ -305,14 +373,51 @@ def main():
         action="store_true",
         help="Pretty-print metrics grouped by model_type vs train_fraction",
     )
+    parser.add_argument(
+        "--captions_only",
+        action="store_true",
+        help="Only write --predictions_json; skip all metric scoring (faster on server before local METEOR)",
+    )
     args = parser.parse_args()
 
-    if not args.checkpoint and not args.manifest:
-        parser.error("Provide --checkpoint or --manifest")
+    if args.captions_only and not args.predictions_json:
+        parser.error("--captions_only requires --predictions_json")
+    if args.from_predictions and args.captions_only:
+        parser.error("--from_predictions cannot be used with --captions_only")
+    if args.from_predictions and (args.checkpoint or args.manifest):
+        parser.error("Use --from_predictions alone, or use --checkpoint / --manifest")
 
-    device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    if not args.checkpoint and not args.manifest and not args.from_predictions:
+        parser.error("Provide --checkpoint, --manifest, or --from_predictions")
+
     ann_file = os.path.join(args.data_dir, "annotations", "dataset_coco.json")
     images_root = os.path.join(args.data_dir, "images")
+
+    if args.from_predictions:
+        if not os.path.isfile(args.from_predictions):
+            raise FileNotFoundError(args.from_predictions)
+        metrics = evaluate_predictions_json(
+            args.from_predictions,
+            ann_file=ann_file,
+            images_root=images_root,
+            split=args.split,
+            skip_rouge=args.skip_rouge,
+        )
+        row = _row_from_predictions_run(
+            args.run_name,
+            args.from_predictions,
+            metrics,
+            args.model_type,
+            args.eval_train_fraction,
+        )
+        print(json.dumps(_json_printable(row), indent=2))
+        if args.output:
+            write_csv([row], args.output)
+        if args.print_regime_table:
+            print_regime_table([row])
+        return
+
+    device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
     all_rows: List[Dict[str, Any]] = []
     run_count = 0
@@ -328,10 +433,8 @@ def main():
             batch_size=args.batch_size,
             max_length=args.max_length,
             skip_rouge=args.skip_rouge,
+            captions_only=args.captions_only,
         )
-        row = _row_from_run(name, cp_path, ckpt, metrics, frac_override)
-        all_rows.append(row)
-        print(json.dumps(_json_printable(row), indent=2))
         run_count += 1
         if args.predictions_json:
             out_path = args.predictions_json
@@ -341,6 +444,12 @@ def main():
                 out_path = f"{base}_{tag}{ext}"
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(preds, f, indent=2)
+            print(f"Wrote {len(preds)} captions -> {out_path}")
+        if args.captions_only:
+            return
+        row = _row_from_run(name, cp_path, ckpt, metrics, frac_override)
+        all_rows.append(row)
+        print(json.dumps(_json_printable(row), indent=2))
 
     if args.checkpoint:
         run_one(args.checkpoint, name=None, frac_override=None)
@@ -350,10 +459,34 @@ def main():
             manifest = yaml.safe_load(f)
         runs = manifest.get("runs", [])
         for run in runs:
-            cp = run["checkpoint"]
             name = run.get("name")
             frac = run.get("train_fraction")
-            run_one(cp, name=name, frac_override=frac)
+            pred_path = run.get("predictions")
+            cp = run.get("checkpoint")
+            if pred_path and cp:
+                raise ValueError(f"Run {name!r}: use either 'checkpoint' or 'predictions', not both")
+            if pred_path:
+                if not os.path.isfile(pred_path):
+                    raise FileNotFoundError(pred_path)
+                model_type = run.get("model_type", "")
+                metrics = evaluate_predictions_json(
+                    pred_path,
+                    ann_file=ann_file,
+                    images_root=images_root,
+                    split=args.split,
+                    skip_rouge=args.skip_rouge,
+                )
+                row = _row_from_predictions_run(
+                    name, pred_path, metrics, model_type, frac
+                )
+                all_rows.append(row)
+                print(json.dumps(_json_printable(row), indent=2))
+            elif cp:
+                run_one(cp, name=name, frac_override=frac)
+            else:
+                raise ValueError(
+                    f"Run {name!r}: manifest entry needs 'checkpoint' or 'predictions'"
+                )
 
     if args.output:
         write_csv(all_rows, args.output)

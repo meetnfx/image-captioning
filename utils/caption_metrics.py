@@ -60,6 +60,27 @@ def build_gts_and_res(
     return gts, res
 
 
+def _compute_meteor_score(
+    gts: Dict[int, List[str]],
+    res: Dict[int, List[str]],
+) -> float:
+    from pycocoevalcap.meteor.meteor import Meteor
+
+    _patch_meteor_destructor_safe()
+    meteor = Meteor()
+    score, _ = meteor.compute_score(gts, res)
+    return float(score)
+
+
+def compute_meteor_only(
+    references_by_image_id: Mapping[int, Sequence[str]],
+    predictions: Sequence[Mapping[str, Union[int, str]]],
+) -> float:
+    """Corpus METEOR only (same tokenization as full metrics). Requires Java."""
+    gts, res = build_gts_and_res(references_by_image_id, predictions)
+    return _compute_meteor_score(gts, res)
+
+
 def compute_caption_metrics(
     references_by_image_id: Mapping[int, Sequence[str]],
     predictions: Sequence[Mapping[str, Union[int, str]]],
@@ -84,14 +105,8 @@ def compute_caption_metrics(
         out["ROUGE_L"] = float(rouge_score)
 
     try:
-        from pycocoevalcap.meteor.meteor import Meteor
-
-        _patch_meteor_destructor_safe()
-        meteor = Meteor()
-        meteor_score, _ = meteor.compute_score(gts, res)
-        out["METEOR"] = float(meteor_score)
+        out["METEOR"] = _compute_meteor_score(gts, res)
     except Exception:
         out["METEOR"] = float("nan")
-    # Do not `del meteor`: triggers buggy Meteor.__del__; GC is enough.
 
     return out
