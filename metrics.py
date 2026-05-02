@@ -83,9 +83,13 @@ def _collate_eval(batch):
     return imgs, img_ids
 
 
-def ids_to_caption(sampled_ids, vocab: Vocabulary) -> str:
+def ids_to_caption(sampled, vocab: Vocabulary) -> str:
+    """Decode decoder.sample(...) output: tensor [1, T] or tuple (tensor, extras)."""
+    if isinstance(sampled, tuple):
+        sampled = sampled[0]
+    flat_ids = sampled.reshape(-1).tolist()
     words: List[str] = []
-    for tid in sampled_ids:
+    for tid in flat_ids:
         w = vocab.itos[int(tid)]
         if w == "<START>":
             continue
@@ -158,7 +162,7 @@ def generate_predictions(
         for i in range(features.size(0)):
             feat = features[i : i + 1]
             sampled = decoder.sample(feat, max_length=max_length)
-            cap = ids_to_caption(sampled[0].tolist(), vocab)
+            cap = ids_to_caption(sampled, vocab)
             predictions.append({"image_id": img_ids[i], "caption": cap})
     return predictions
 

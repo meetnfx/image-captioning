@@ -8,11 +8,35 @@ METEOR is reported as NaN.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Sequence, Tuple, Union
 
 from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.cider.cider import Cider
 from pycocoevalcap.rouge.rouge import Rouge
+
+
+def _patch_meteor_destructor_safe() -> None:
+    """Avoid AttributeError in Meteor.__del__ when __init__ fails before self.lock is set."""
+    try:
+        from pycocoevalcap.meteor import meteor as meteor_mod
+
+        cls = meteor_mod.Meteor
+        if getattr(cls, "_del_patch_applied", False):
+            return
+        orig = cls.__del__
+
+        def safe_del(self):
+            if not hasattr(self, "lock"):
+                return
+            try:
+                orig(self)
+            except Exception:
+                pass
+
+        cls.__del__ = safe_del  # type: ignore[method-assign]
+        cls._del_patch_applied = True  # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 
 def simple_tokenize(s: str) -> str:
@@ -59,20 +83,15 @@ def compute_caption_metrics(
         rouge_score, _ = rouge_scorer.compute_score(gts, res)
         out["ROUGE_L"] = float(rouge_score)
 
-    meteor: Optional[Any] = None
     try:
         from pycocoevalcap.meteor.meteor import Meteor
 
+        _patch_meteor_destructor_safe()
         meteor = Meteor()
         meteor_score, _ = meteor.compute_score(gts, res)
         out["METEOR"] = float(meteor_score)
     except Exception:
         out["METEOR"] = float("nan")
-    finally:
-        if meteor is not None:
-            try:
-                del meteor
-            except Exception:
-                pass
+    # Do not `del meteor`: triggers buggy Meteor.__del__; GC is enough.
 
     return out
