@@ -1,45 +1,36 @@
 # Image Captioning Project (Comparison of CNN-LSTM, Attention, and Transformers)
-
 A PyTorch implementation comparing sequence generation architectures on the MS COCO dataset.
 
+
+
+
+
 ## Project Environment
-
 * **Primary Python Version:** 3.10
-* **Dataset:** MS COCO (Karpathy splits)
-* **Hardware:** CPU/GPU (CUDA); cluster jobs supported via `scripts/train.sbatch`
+* **Dataset:** MS COCO (Karpathy Splits)
+* **Hardware Support:** Multi-platform (Cloud TPU/GPU & Local CUDA)
+# important Dependency 
+We have different hardware environments, so we separated our dependencies from pytorch
+* **`torch` & `torchvision`:** The core deep learning framework and pre-trained CNNs (ResNet).
+* **`pycocotools` & `pycocoevalcap`:** Needed for parsing MS COCO's massive JSON annotations and calculating standard image captioning metrics (BLEU, METEOR, CIDEr).
+* **`Pillow`:** Backend image processing required before feeding images to PyTorch.
+* **`pyyaml`:** Used to read our `.yaml` hyperparameter configuration files.
 
-### Dependencies
-
-Dependencies are listed in `requirements.txt`. Highlights:
-
-* **`torch` & `torchvision`:** Training and pretrained CNN encoder (ResNet).
-* **`pycocotools` & `pycocoevalcap`:** Karpathy-style metrics (BLEU, METEOR, CIDEr, ROUGE-L). **METEOR requires Java** on `PATH` and the `meteor-1.5.jar` bundled with `pycocoevalcap`.
-* **`Pillow`:** Image loading.
-* **`pyyaml`:** Training and evaluation YAML configs.
-
----
-
-## Setup
-
-**Do not commit** the MS COCO images, `dataset_coco.json` weights, or large checkpoints to Git. Use local paths such as `data/` and `checkpoints/`.
-
-### Cloud (e.g. Colab)
-
-Clone the repo, then:
-
-```bash
-pip install -r requirements.txt
-```
-
+# Setup
+**Important:** Please do not commit the MS COCO dataset or `.pth` model weights to GitHub. Place datasets inside `/data` and weights inside `/checkpoints`.
+### Cloud use ( Colab)
+These platforms already have optimized GPU drivers, `torch`, and `torchvision` pre-installed. 
+Clone this repository.
+Run pip install -r requirements.txt
+  
 ### Local
-
-Create a Conda (or venv) environment with Python 3.10, install PyTorch for your CUDA version, then:
-
-```bash
+Clone the repo
+create and activate a Conda environment with correct python version 3.10
+install pytorch and cuda depending on gpu
 pip install -r requirements.txt
-```
 
-### Dataset layout
+### Datasets (either run script for Linux or Manually)
+
 
 After downloading (script or manual), you should have:
 
@@ -51,6 +42,20 @@ data/
     train2014/             # COCO train images
     val2014/               # COCO val images
 ```
+
+script (linux)
+cd scripts
+bash download_coco.sh 
+OR manually downlaod the datasets (windows or if the script doesnt work)
+Click the links below to download the dataset zips via your browser. 
+1. [Karpathy Splits JSON (caption_datasets.zip)](http://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip)
+2. [MS COCO Train 2014 (train2014.zip)](http://images.cocodataset.org/zips/train2014.zip)
+3. [MS COCO Val 2014 (val2014.zip)](http://images.cocodataset.org/zips/val2014.zip)
+Move the dataset_coco.json to data/annotations
+Unzip Train 2014 into data/images/train2014
+Unzip Val 2014 into data/images/val2014
+
+
 
 **Linux script:** from repo root:
 
@@ -69,7 +74,7 @@ bash download_coco.sh
 
 ## Commands reference
 
-Run these from the **repository root** unless noted. Default data root is `./data` (override with `--data_dir`).
+Run these from the **repository root** unless noted. Default data root is `./data` 
 
 ### Training
 
@@ -85,13 +90,6 @@ python train.py --config configs/regimes/attention_25pct.yaml
 python train.py --config configs/regimes/transformer_100pct.yaml
 ```
 
-**Cluster (SLURM example):** edit `PROJECT_ROOT`, `CONDA_ENV`, and partition in `scripts/train.sbatch`, then:
-
-```bash
-sbatch scripts/train.sbatch
-# Optional: override config for one job
-sbatch --export=ALL,CONFIG=configs/regimes/lstm_50pct.yaml scripts/train.sbatch
-```
 
 ---
 
@@ -157,6 +155,6 @@ Manifest rows use `predictions:` instead of `checkpoint:` and include `model_typ
 
 ---
 
-### Git workflow
+### Github
+when working on this, create feature branches and then merge to main when done.
 
-Use feature branches and merge to `main` when work is complete.
