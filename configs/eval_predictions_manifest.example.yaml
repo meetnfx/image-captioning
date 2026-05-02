@@ -1,0 +1,67 @@
+# Score BLEU / METEOR / CIDEr / ROUGE from caption JSONs in results/captions/ (no GPU).
+#
+# Filenames match metrics.py when using:
+#   --manifest configs/eval_manifest.example.yaml --captions_only
+#   --predictions_json results/captions/val.json
+# Run 1 → val.json; run 2+ → val_<run_name>.json
+#
+# From repo root:
+#   python metrics.py --manifest configs/eval_predictions_manifest.example.yaml \
+#     --data_dir ./data --split val \
+#     --output results/metrics_from_captions.csv --print_regime_table
+#
+# Generate those JSONs (server / GPU):
+#   python metrics.py --manifest configs/eval_manifest.example.yaml --captions_only \
+#     --predictions_json results/captions/val.json --split val --data_dir ./data
+
+runs:
+  - name: lstm_10pct
+    predictions: results/captions/val.json
+    train_fraction: 0.1
+    model_type: lstm
+  - name: lstm_25pct
+    predictions: results/captions/val_lstm_25pct.json
+    train_fraction: 0.25
+    model_type: lstm
+  - name: lstm_50pct
+    predictions: results/captions/val_lstm_50pct.json
+    train_fraction: 0.5
+    model_type: lstm
+  - name: lstm_100pct
+    predictions: results/captions/val_lstm_100pct.json
+    train_fraction: 1.0
+    model_type: lstm
+
+  - name: attention_10pct
+    predictions: results/captions/val_attention_10pct.json
+    train_fraction: 0.1
+    model_type: attention
+  - name: attention_25pct
+    predictions: results/captions/val_attention_25pct.json
+    train_fraction: 0.25
+    model_type: attention
+  - name: attention_50pct
+    predictions: results/captions/val_attention_50pct.json
+    train_fraction: 0.5
+    model_type: attention
+  - name: attention_100pct
+    predictions: results/captions/val_attention_100pct.json
+    train_fraction: 1.0
+    model_type: attention
+
+  - name: transformer_10pct
+    predictions: results/captions/val_transformer_10pct.json
+    train_fraction: 0.1
+    model_type: transformer
+  - name: transformer_25pct
+    predictions: results/captions/val_transformer_25pct.json
+    train_fraction: 0.25
+    model_type: transformer
+  - name: transformer_50pct
+    predictions: results/captions/val_transformer_50pct.json
+    train_fraction: 0.5
+    model_type: transformer
+  - name: transformer_100pct
+    predictions: results/captions/val_transformer_100pct.json
+    train_fraction: 1.0
+    model_type: transformer
