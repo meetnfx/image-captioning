@@ -1,10 +1,12 @@
 import os
 import json
+import math
+import random
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from PIL import Image
-from collections import Counter
+from collections import Counter, defaultdict
 
 
 class Vocabulary:
@@ -33,8 +35,28 @@ class Vocabulary:
             self.stoi.get(token, self.stoi["<UNK>"])
             for token in tokenized_text
         ]
+
+    @classmethod
+    def from_saved(cls, stoi, itos):
+        obj = cls.__new__(cls)
+        obj.freq_threshold = 5
+        obj.stoi = dict(stoi)
+        obj.itos = {int(k): v for k, v in dict(itos).items()}
+        return obj
+
+
 class COCODataset(Dataset):
-    def __init__(self, root_dir, ann_file, split='train', transform=None, vocab=None, freq_threshold=5):
+    def __init__(
+        self,
+        root_dir,
+        ann_file,
+        split='train',
+        transform=None,
+        vocab=None,
+        freq_threshold=5,
+        train_fraction=None,
+        subset_seed=42,
+    ):
         """
         root_dir: The base image folder (e.g., 'data/images')
         ann_file: Path to Karpathy's dataset_coco.json
@@ -58,6 +80,19 @@ class COCODataset(Dataset):
                     caption = sentence['raw']
                     self.dataset_pairs.append((full_path, caption))
                     all_captions.append(caption)
+
+        if split == 'train' and train_fraction is not None and train_fraction < 1.0:
+            by_path = defaultdict(list)
+            for path, cap in self.dataset_pairs:
+                by_path[path].append(cap)
+            paths = list(by_path.keys())
+            rng = random.Random(subset_seed)
+            rng.shuffle(paths)
+            n_keep = max(1, math.ceil(len(paths) * float(train_fraction)))
+            keep = set(paths[:n_keep])
+            self.dataset_pairs = [(p, c) for p in sorted(keep) for c in by_path[p]]
+            all_captions = [c for _, c in self.dataset_pairs]
+
         self.vocab = vocab # create vocab
         if self.vocab is None:
             self.vocab = Vocabulary(freq_threshold)
@@ -88,8 +123,28 @@ class MyCollate:
         return imgs, targets
 
 
-def get_loader(root_dir, ann_file, split='train', transform=None, batch_size=32, num_workers=4, shuffle=True, pin_memory=True, vocab=None):
-    dataset = COCODataset(root_dir, ann_file, split=split, transform=transform, vocab=vocab)
+def get_loader(
+    root_dir,
+    ann_file,
+    split='train',
+    transform=None,
+    batch_size=32,
+    num_workers=4,
+    shuffle=True,
+    pin_memory=True,
+    vocab=None,
+    train_fraction=None,
+    subset_seed=42,
+):
+    dataset = COCODataset(
+        root_dir,
+        ann_file,
+        split=split,
+        transform=transform,
+        vocab=vocab,
+        train_fraction=train_fraction,
+        subset_seed=subset_seed,
+    )
     pad_idx = dataset.vocab.stoi["<PAD>"]
     loader = DataLoader(
         dataset=dataset,
