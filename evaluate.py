@@ -26,7 +26,7 @@ def generate_caption(image_path, encoder, decoder, dataset, device, max_length=2
         inference_ms = (end_time - start_time) * 1000
     if isinstance(sample_output, tuple): # api stuff
         sampled_ids, alphas = sample_output
-        alphas = alphas.cpu().numpy() # Convert to numpy  matplotlib
+        alphas = alphas[0].cpu().numpy() 
     else:
         sampled_ids = sample_output
         alphas = None
@@ -79,7 +79,7 @@ def main():
     _, dataset = get_loader(
         root_dir=images_dir,
         ann_file=os.path.join(data_dir, 'annotations', 'dataset_coco.json'),
-        split='val', transform=get_transforms('val'), batch_size=1
+        split='train', transform=get_transforms('val'), batch_size=1
     )
     encoder = EncoderCNN(arch_cfg['embed_size']).to(device) 
     if model_type == "lstm":  

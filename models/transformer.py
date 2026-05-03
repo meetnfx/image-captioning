@@ -103,11 +103,30 @@ class TransformerDecoder(nn.Module):
             device=features.device,
         )
 
+        alphas_list = []
+        
+        last_layer = self.decoder.layers[-1]
+        original_forward = last_layer.multihead_attn.forward
+
+        def hooked_forward(*args, **kwargs):
+            kwargs['need_weights'] = True
+            out = original_forward(*args, **kwargs) 
+            alphas_list.append(out[1][:, -1, :].detach()) 
+            return out
+
+        last_layer.multihead_attn.forward = hooked_forward
+
         for _ in range(max_length):
             logits = self.forward(features, generated)
             next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
             generated = torch.cat((generated, next_token), dim=1)
+            
             if torch.all(next_token.squeeze(1) == self.end_idx):
                 break
 
-        return generated
+       
+        last_layer.multihead_attn.forward = original_forward
+
+        alphas = torch.stack(alphas_list, dim=1) 
+
+        return generated, alphas

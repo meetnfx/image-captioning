@@ -82,12 +82,13 @@ class LSTMAttention(nn.Module):
         
         curr_word = torch.LongTensor([self.start_token]).to(device)
         predicted_ids = []
-        all_alphas = []
+        
+        alphas_list = []
         
         for _ in range(max_length):
             embed = self.embedding(curr_word)
             context, alpha = self.attention(features, h)
-            all_alphas.append(alpha)
+            alphas_list.append(alpha) 
             gate = self.sigmoid(self.f_beta(h))
             context = gate * context
             
@@ -102,5 +103,5 @@ class LSTMAttention(nn.Module):
                 break
                 
             curr_word = word
-            
-        return torch.tensor([predicted_ids]), torch.cat(all_alphas, dim=0)
+        stacked_alphas = torch.stack(alphas_list, dim=1)
+        return torch.tensor(predicted_ids).unsqueeze(0), stacked_alphas
